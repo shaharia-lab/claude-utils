@@ -1,0 +1,39 @@
+services:
+  proxy:
+    image: ubuntu/squid
+    volumes:
+      - ./squid.conf:/etc/squid/squid.conf:ro
+    networks:
+      - isolated
+      - internet
+    restart: unless-stopped
+
+  agent:
+    build: .
+    depends_on:
+      - proxy
+    environment:
+      - HTTP_PROXY=http://proxy:3128
+      - HTTPS_PROXY=http://proxy:3128
+      - http_proxy=http://proxy:3128
+      - https_proxy=http://proxy:3128
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - ${WORKSPACE:-./workspace}:/workspace
+      - ${HOME}/.claude:/host-claude:ro
+      - ${HOME}/.claude.json:/host-claude.json:ro
+    networks:
+      - isolated
+    deploy:
+      resources:
+        limits:
+          cpus: "${AGENT_CPUS:-2}"
+          memory: "${AGENT_MEMORY:-4g}"
+    profiles:
+      - run
+
+networks:
+  isolated:
+    internal: true
+  internet:
+    driver: bridge
